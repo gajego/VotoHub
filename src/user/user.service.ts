@@ -1,18 +1,51 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { encript } from 'src/shared/crypt';
+import { ROLE } from 'src/shared/enum/user';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
   ) {}
+
+  async ensureInitialAdmin() {
+    const usersCount = await this.usersRepository.count();
+    if (usersCount > 0) {
+      return false;
+    }
+
+    const defaultAdmin = {
+      fullName: 'Administrador VotoHub',
+      email: 'admin@votohub.com',
+      password: 'Admin@2026!',
+      role: ROLE.ADMIN,
+    };
+
+    try {
+      const adminCreated = await this.usersRepository.save({
+        ...defaultAdmin,
+        password: await encript(defaultAdmin.password),
+      });
+
+      this.logger.log(`Usuário ADMIN inicial criado: ${adminCreated.email}`);
+      return true;
+    } catch (error: any) {
+      if (error?.code === '23505' || error?.code === 'SQLITE_CONSTRAINT') {
+        return false;
+      }
+
+      throw error;
+    }
+  }
 
   async create(createUserDto: CreateUserDto) {
     const hasUser = await this.usersRepository.findOneBy({

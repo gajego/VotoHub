@@ -16,11 +16,11 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
-    const route = request.route;
+    const routePath = `${request.baseUrl ?? ''}${request.route?.path ?? ''}`;
     if (
       publicRoutes().some(
         (publicRoute) =>
-          route?.path === publicRoute.path &&
+          routePath === publicRoute.path &&
           request.method === publicRoute.method,
       )
     ) {
@@ -46,7 +46,7 @@ export class AuthGuard implements CanActivate {
       request.user.role !== ROLE.ADMIN &&
       !userRoutes().some(
         (userRoute) =>
-          route?.path === userRoute.path && request.method === userRoute.method,
+          routePath === userRoute.path && request.method === userRoute.method,
       )
     ) {
       throw new ForbiddenException(
@@ -76,10 +76,6 @@ function publicRoutes() {
       path: '/auth/verifyToken',
       method: 'POST',
     },
-    // {
-    //   path: '/projects/shared',
-    //   method: 'GET',
-    // },
   ];
 }
 

@@ -12,6 +12,7 @@ import { RemovePasswordInterceptor } from './shared/interceptors/remove-password
 import { ScheduleModule } from '@nestjs/schedule';
 import { CandidatoModule } from './candidato/candidato.module';
 import { VotacaoModule } from './votacao/votacao.module';
+import { InitialAdminBootstrapService } from './shared/service/initial-admin-bootstrap.service';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { VotacaoModule } from './votacao/votacao.module';
   controllers: [AppController],
   providers: [
     AppService,
+    InitialAdminBootstrapService,
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
