@@ -30,12 +30,6 @@ import { VotacaoModule } from './votacao/votacao.module';
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
       subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
-      ssl:
-        process.env.REJECTUNAUTHORIZED === 'undefined'
-          ? undefined
-          : {
-              rejectUnauthorized: process.env.REJECTUNAUTHORIZED === 'true',
-            },
     }),
     AuthModule,
     UserModule,
