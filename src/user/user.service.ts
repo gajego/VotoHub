@@ -6,6 +6,8 @@ import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { encript } from 'src/shared/crypt';
 import { ROLE } from 'src/shared/enum/user';
+import { Candidato } from 'src/candidato/entities/candidato.entity';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -14,6 +16,8 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Candidato)
+    private candidatoRepository: Repository<Candidato>,
     private jwtService: JwtService,
   ) {}
 
@@ -31,6 +35,8 @@ export class UserService {
     };
 
     try {
+      await this.ensureEmailAvailable(defaultAdmin.email);
+
       const adminCreated = await this.usersRepository.save({
         ...defaultAdmin,
         password: await encript(defaultAdmin.password),
@@ -48,14 +54,7 @@ export class UserService {
   }
 
   async create(createUserDto: CreateUserDto) {
-    const hasUser = await this.usersRepository.findOneBy({
-      email: createUserDto.email,
-    });
-    if (hasUser?.id)
-      throw new HttpException(
-        'Nome de usuário já está em uso',
-        HttpStatus.NOT_ACCEPTABLE,
-      );
+    await this.ensureEmailAvailable(createUserDto.email);
 
     const userCreated = await this.usersRepository.save({
       ...createUserDto,
@@ -95,14 +94,7 @@ export class UserService {
       );
     }
 
-    const hasUser = await this.usersRepository.findOneBy({
-      email: createUserDto.email,
-    });
-    if (hasUser?.id)
-      throw new HttpException(
-        'Nome de usuário já está em uso',
-        HttpStatus.NOT_ACCEPTABLE,
-      );
+    await this.ensureEmailAvailable(createUserDto.email);
 
     const userCreated = await this.usersRepository.save({
       ...createUserDto,
@@ -156,10 +148,8 @@ export class UserService {
   }
 
   async createDefault(createUserDto: CreateUserDto) {
-    const hasUser = await this.usersRepository.findOneBy({
-      email: createUserDto.email,
-    });
-    if (hasUser?.id) return false;
+    const emailAvailable = await this.isEmailAvailable(createUserDto.email);
+    if (!emailAvailable) return false;
 
     const userCreated = await this.usersRepository.save({
       ...createUserDto,
@@ -267,7 +257,7 @@ export class UserService {
 
   async update(
     targetUserId: number,
-    updateUserDto: any,
+    updateUserDto: UpdateUserDto,
     requesterUserId: number,
   ) {
     const requestor = await this.usersRepository.findOneBy({
@@ -287,15 +277,7 @@ export class UserService {
     }
 
     if (updateUserDto.email && userToUpdate.email !== updateUserDto.email) {
-      const userByUserName = await this.usersRepository.findOneBy({
-        email: updateUserDto.email,
-      });
-      if (userByUserName) {
-        throw new HttpException(
-          'Nome de usuário já está em uso',
-          HttpStatus.NOT_ACCEPTABLE,
-        );
-      }
+      await this.ensureEmailAvailable(updateUserDto.email, targetUserId);
     }
 
     const isOwner = targetUserId === requesterUserId;
@@ -318,5 +300,32 @@ export class UserService {
     });
 
     return updatedUser;
+  }
+
+  private async ensureEmailAvailable(email: string, userId?: number) {
+    const isAvailable = await this.isEmailAvailable(email, userId);
+
+    if (!isAvailable) {
+      throw new HttpException(
+        'Nome de usuário já está em uso',
+        HttpStatus.NOT_ACCEPTABLE,
+      );
+    }
+  }
+
+  private async isEmailAvailable(email: string, userId?: number) {
+    const userConflict = await this.usersRepository.findOneBy({ email });
+    if (userConflict && userConflict.id !== userId) {
+      return false;
+    }
+
+    const candidatoConflict = await this.candidatoRepository.findOneBy({
+      email,
+    });
+    if (candidatoConflict) {
+      return false;
+    }
+
+    return true;
   }
 }

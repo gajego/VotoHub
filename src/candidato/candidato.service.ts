@@ -5,21 +5,19 @@ import { UpdateCandidatoDto } from './dto/update-candidato.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Candidato } from './entities/candidato.entity';
+import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class CandidatoService {
   constructor(
     @InjectRepository(Candidato)
     private readonly candidatoRepository: Repository<Candidato>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async create(createCandidatoDto: CreateCandidatoDto, image?: MulterFile) {
-    const existing = await this.candidatoRepository.findOneBy({
-      email: createCandidatoDto.email,
-    });
-    if (existing) {
-      throw new HttpException('Candidato já cadastrado', HttpStatus.CONFLICT);
-    }
+    await this.ensureEmailAvailable(createCandidatoDto.email);
 
     const candidato = await this.candidatoRepository.save({
       ...createCandidatoDto,
@@ -51,6 +49,14 @@ export class CandidatoService {
     image?: MulterFile,
   ) {
     const candidato = await this.findCandidateEntity(id);
+
+    if (
+      updateCandidatoDto.email &&
+      updateCandidatoDto.email !== candidato.email
+    ) {
+      await this.ensureEmailAvailable(updateCandidatoDto.email, id);
+    }
+
     const updated = await this.candidatoRepository.save({
       ...candidato,
       ...updateCandidatoDto,
@@ -74,6 +80,20 @@ export class CandidatoService {
       throw new HttpException('Candidato não encontrado', HttpStatus.NOT_FOUND);
     }
     return candidato;
+  }
+
+  private async ensureEmailAvailable(email: string, candidatoId?: number) {
+    const existingCandidate = await this.candidatoRepository.findOneBy({
+      email,
+    });
+    if (existingCandidate && existingCandidate.id !== candidatoId) {
+      throw new HttpException('Candidato já cadastrado', HttpStatus.CONFLICT);
+    }
+
+    const existingUser = await this.userRepository.findOneBy({ email });
+    if (existingUser) {
+      throw new HttpException('Email já está em uso', HttpStatus.CONFLICT);
+    }
   }
 
   private serializeCandidate(candidato: Candidato) {
