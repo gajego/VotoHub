@@ -48,7 +48,7 @@ export class UserService {
     return { access_token: token };
   }
 
-  async createByAdmin(createUserDto: CreateUserDto, adminId: string) {
+  async createByAdmin(createUserDto: CreateUserDto, adminId: number) {
     const admin = await this.usersRepository.findOneBy({ id: adminId });
 
     if (!admin) {
@@ -91,7 +91,7 @@ export class UserService {
     throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
   }
 
-  async findOneById(targetId: string, requesterId: string) {
+  async findOneById(targetId: number, requesterId: number) {
     const requester = await this.usersRepository.findOneBy({
       id: requesterId,
     });
@@ -150,7 +150,7 @@ export class UserService {
     page: number = 1,
     limit: number = 10,
     search?: string,
-    requesterId?: string,
+    requesterId?: number,
   ) {
     if (requesterId) {
       const requester = await this.usersRepository.findOneBy({
@@ -202,7 +202,7 @@ export class UserService {
     };
   }
 
-  async delete(targetUserId: string, requesterUserId: string) {
+  async delete(targetUserId: number, requesterUserId: number) {
     const requester = await this.usersRepository.findOneBy({
       id: requesterUserId,
     });

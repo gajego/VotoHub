@@ -36,7 +36,7 @@ export class AuthService {
     throw new HttpException('Crendenciais inválidas', HttpStatus.UNAUTHORIZED);
   }
 
-  async verifyCredentials(loginDto: AuthDto): Promise<string | undefined> {
+  async verifyCredentials(loginDto: AuthDto): Promise<number | undefined> {
     const user = await this.usersService.findOneByUsername(loginDto.username);
     if (user && (await isMatchPass(loginDto.password, user.password))) {
       return user.id;

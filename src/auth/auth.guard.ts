@@ -1,15 +1,13 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-
-async function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { ROLE } from 'src/shared/enum/user';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -18,7 +16,14 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
-    if (publicRoutes().some((route) => request.route.path === route.path)) {
+    const route = request.route;
+    if (
+      publicRoutes().some(
+        (publicRoute) =>
+          route?.path === publicRoute.path &&
+          request.method === publicRoute.method,
+      )
+    ) {
       return true;
     }
 
@@ -35,6 +40,18 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException('Sessão expirada');
       }
       throw new UnauthorizedException();
+    }
+
+    if (
+      request.user.role !== ROLE.ADMIN &&
+      !userRoutes().some(
+        (userRoute) =>
+          route?.path === userRoute.path && request.method === userRoute.method,
+      )
+    ) {
+      throw new ForbiddenException(
+        'Acesso permitido apenas para administradores',
+      );
     }
     return true;
   }
@@ -63,5 +80,18 @@ function publicRoutes() {
     //   path: '/projects/shared',
     //   method: 'GET',
     // },
+  ];
+}
+
+function userRoutes() {
+  return [
+    {
+      path: '/votacao',
+      method: 'GET',
+    },
+    {
+      path: '/votacao/:id/votar',
+      method: 'POST',
+    },
   ];
 }

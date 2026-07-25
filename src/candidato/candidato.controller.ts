@@ -26,20 +26,20 @@ export class CandidatoController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: number) {
     return this.candidatoService.findOne(id);
   }
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Body() updateCandidatoDto: UpdateCandidatoDto,
   ) {
     return this.candidatoService.update(id, updateCandidatoDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: number) {
     return this.candidatoService.remove(id);
   }
 }

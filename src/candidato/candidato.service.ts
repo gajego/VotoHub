@@ -26,7 +26,7 @@ export class CandidatoService {
     return this.candidatoRepository.find({ order: { id: 'ASC' } });
   }
 
-  async findOne(id: string) {
+  async findOne(id: number) {
     const candidato = await this.candidatoRepository.findOneBy({ id });
     if (!candidato) {
       throw new HttpException('Candidato não encontrado', HttpStatus.NOT_FOUND);
@@ -34,13 +34,13 @@ export class CandidatoService {
     return candidato;
   }
 
-  async update(id: string, updateCandidatoDto: UpdateCandidatoDto) {
+  async update(id: number, updateCandidatoDto: UpdateCandidatoDto) {
     const candidato = await this.findOne(id);
     Object.assign(candidato, updateCandidatoDto);
     return this.candidatoRepository.save(candidato);
   }
 
-  async remove(id: string) {
+  async remove(id: number) {
     const candidato = await this.findOne(id);
     await this.candidatoRepository.remove(candidato);
     return { message: 'Candidato removido com sucesso' };

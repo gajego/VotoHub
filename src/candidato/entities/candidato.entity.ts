@@ -16,6 +16,9 @@ export class Candidato {
   @Column()
   nome: string;
 
+  @Column({ type: 'varchar', length: 14 })
+  cpf: string;
+
   @Column({ unique: true })
   email: string;
 

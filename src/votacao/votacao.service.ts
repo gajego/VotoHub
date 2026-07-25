@@ -41,12 +41,23 @@ export class VotacaoService {
     return this.serializeElection(votacao);
   }
 
-  async findAll() {
+  async findAll(userId: number) {
     const votacoes = await this.votacaoRepository.find({
       relations: { candidatos: true },
       order: { startDate: 'DESC' },
     });
-    return votacoes.map((votacao) => this.serializeElection(votacao));
+    const votosDoUsuario = await this.votoRepository.find({
+      where: { user: { id: userId } },
+      relations: { votacao: true },
+    });
+    const votacoesRespondidas = new Set(
+      votosDoUsuario.map((voto) => voto.votacao.id),
+    );
+    return votacoes.map((votacao) =>
+      this.serializeElection(votacao, {
+        status: votacoesRespondidas.has(votacao.id) ? 'COMPLETE' : 'AWAITING',
+      }),
+    );
   }
 
   async findOne(id: number) {
@@ -181,11 +192,15 @@ export class VotacaoService {
       );
   }
 
-  private serializeElection(votacao: Votacao) {
+  private serializeElection(
+    votacao: Votacao,
+    extra: { status?: 'COMPLETE' | 'AWAITING' } = {},
+  ) {
     return {
       ...votacao,
       startDate: this.formatDateForApi(votacao.startDate),
       endDate: this.formatDateForApi(votacao.endDate),
+      ...extra,
     };
   }
 

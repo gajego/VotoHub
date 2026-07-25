@@ -50,13 +50,13 @@ export class UserController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @GetUser() user: any) {
+  findOne(@Param('id') id: number, @GetUser() user: any) {
     return this.userService.findOneById(id, user.id);
   }
 
   @Patch(':id')
   async update(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Body() updateUserDto: UpdateUserDto,
     @GetUser() user: any,
   ) {
@@ -64,7 +64,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string, @GetUser() user: any) {
+  async delete(@Param('id') id: number, @GetUser() user: any) {
     return this.userService.delete(id, user.id);
   }
 }

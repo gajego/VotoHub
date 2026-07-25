@@ -24,8 +24,8 @@ export class VotacaoController {
   }
 
   @Get()
-  findAll() {
-    return this.votacaoService.findAll();
+  findAll(@GetUser() user: { id: number }) {
+    return this.votacaoService.findAll(user.id);
   }
 
   @Get('votos')
@@ -40,7 +40,7 @@ export class VotacaoController {
 
   @Post(':id/votar')
   votar(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Body() createVotoDto: CreateVotoDto,
     @GetUser() user: { id: number },
   ) {
