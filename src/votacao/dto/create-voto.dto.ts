@@ -1,9 +1,9 @@
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, ValidateIf } from 'class-validator';
 
 export class CreateVotoDto {
+  @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsNumber()
-  @IsNotEmpty()
-  candidatoId: number;
+  candidatoId?: number | null;
 
   @IsString()
   @IsNotEmpty()

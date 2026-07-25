@@ -23,10 +23,10 @@ export class Voto {
   votacao: Votacao;
 
   @ManyToOne(() => Candidato, (candidato) => candidato.votos, {
-    nullable: false,
+    nullable: true,
     onDelete: 'CASCADE',
   })
-  candidato: Candidato;
+  candidato: Candidato | null;
 
   @ManyToOne(() => User, (user) => user.votos, {
     nullable: false,

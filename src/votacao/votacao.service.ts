@@ -116,10 +116,15 @@ export class VotacaoService {
       throw new BadRequestException('Votação fora do período permitido');
     }
 
-    const candidato = votacao.candidatos.find(
-      (item) => item.id === createVotoDto.candidatoId,
-    );
-    if (!candidato) {
+    const isBlankVote =
+      createVotoDto.candidatoId === undefined ||
+      createVotoDto.candidatoId === null;
+    const candidato = isBlankVote
+      ? null
+      : votacao.candidatos.find(
+          (item) => item.id === createVotoDto.candidatoId,
+        );
+    if (!isBlankVote && !candidato) {
       throw new BadRequestException('Candidato não participa desta votação');
     }
 
@@ -260,7 +265,10 @@ export class VotacaoService {
     return { startDate, endDate };
   }
 
-  private serializeCandidate(candidato: Candidato) {
+  private serializeCandidate(candidato: Candidato | null) {
+    if (!candidato) {
+      return null;
+    }
     const { image, ...rest } = candidato;
     return {
       ...rest,
