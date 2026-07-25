@@ -4,4 +4,3 @@ coverage
 .git
 .vscode
 npm-debug.log
-Dockerfile
