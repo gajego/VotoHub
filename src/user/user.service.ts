@@ -24,10 +24,10 @@ export class UserService {
     }
 
     const defaultAdmin = {
-      fullName: 'Administrador VotoHub',
-      email: 'admin@votohub.com',
-      password: 'Admin@2026!',
-      role: ROLE.ADMIN,
+      fullName: process.env.DEFAULT_ADMIN_FULL_NAME,
+      email: process.env.DEFAULT_ADMIN_EMAIL,
+      password: process.env.DEFAULT_ADMIN_PASSWORD,
+      role: (process.env.DEFAULT_ADMIN_ROLE as ROLE) ?? ROLE.ADMIN,
     };
 
     try {
