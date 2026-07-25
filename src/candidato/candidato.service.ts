@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import type { File as MulterFile } from 'multer';
 import { CreateCandidatoDto } from './dto/create-candidato.dto';
 import { UpdateCandidatoDto } from './dto/update-candidato.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,21 +13,62 @@ export class CandidatoService {
     private readonly candidatoRepository: Repository<Candidato>,
   ) {}
 
-  async create(createCandidatoDto: CreateCandidatoDto) {
+  async create(createCandidatoDto: CreateCandidatoDto, image?: MulterFile) {
     const existing = await this.candidatoRepository.findOneBy({
       email: createCandidatoDto.email,
     });
     if (existing) {
       throw new HttpException('Candidato já cadastrado', HttpStatus.CONFLICT);
     }
-    return this.candidatoRepository.save(createCandidatoDto);
+
+    const candidato = await this.candidatoRepository.save({
+      ...createCandidatoDto,
+      ...(image && {
+        image: image.buffer,
+        imageContentType: image.mimetype,
+      }),
+    });
+
+    return this.serializeCandidate(candidato);
   }
 
   findAll() {
-    return this.candidatoRepository.find({ order: { id: 'ASC' } });
+    return this.candidatoRepository
+      .find({ order: { id: 'ASC' } })
+      .then((candidatos) =>
+        candidatos.map((candidato) => this.serializeCandidate(candidato)),
+      );
   }
 
   async findOne(id: number) {
+    const candidato = await this.findCandidateEntity(id);
+    return this.serializeCandidate(candidato);
+  }
+
+  async update(
+    id: number,
+    updateCandidatoDto: UpdateCandidatoDto,
+    image?: MulterFile,
+  ) {
+    const candidato = await this.findCandidateEntity(id);
+    const updated = await this.candidatoRepository.save({
+      ...candidato,
+      ...updateCandidatoDto,
+      ...(image && {
+        image: image.buffer,
+        imageContentType: image.mimetype,
+      }),
+    });
+    return this.serializeCandidate(updated);
+  }
+
+  async remove(id: number) {
+    const candidato = await this.findCandidateEntity(id);
+    await this.candidatoRepository.remove(candidato);
+    return { message: 'Candidato removido com sucesso' };
+  }
+
+  private async findCandidateEntity(id: number) {
     const candidato = await this.candidatoRepository.findOneBy({ id });
     if (!candidato) {
       throw new HttpException('Candidato não encontrado', HttpStatus.NOT_FOUND);
@@ -34,15 +76,12 @@ export class CandidatoService {
     return candidato;
   }
 
-  async update(id: number, updateCandidatoDto: UpdateCandidatoDto) {
-    const candidato = await this.findOne(id);
-    Object.assign(candidato, updateCandidatoDto);
-    return this.candidatoRepository.save(candidato);
-  }
-
-  async remove(id: number) {
-    const candidato = await this.findOne(id);
-    await this.candidatoRepository.remove(candidato);
-    return { message: 'Candidato removido com sucesso' };
+  private serializeCandidate(candidato: Candidato) {
+    const { image, ...rest } = candidato;
+    return {
+      ...rest,
+      image: image ? Buffer.from(image).toString('base64') : null,
+      imageContentType: candidato.imageContentType ?? null,
+    };
   }
 }

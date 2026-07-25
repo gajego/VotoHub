@@ -22,6 +22,12 @@ export class Candidato {
   @Column({ unique: true })
   email: string;
 
+  @Column({ type: 'bytea', nullable: true })
+  image: Buffer | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  imageContentType: string | null;
+
   @ManyToMany(() => Votacao, (votacao) => votacao.candidatos)
   votacoes: Votacao[];
 

@@ -180,8 +180,9 @@ export class VotacaoService {
         order: { createdAt: 'ASC' },
       })
       .then((votos) =>
-        votos.map(({ user, ...voto }) => ({
+        votos.map(({ user, candidato, ...voto }) => ({
           ...voto,
+          candidato: this.serializeCandidate(candidato),
           votacao: this.serializeElection(voto.votacao),
           user: {
             id: user.id,
@@ -196,8 +197,15 @@ export class VotacaoService {
     votacao: Votacao,
     extra: { status?: 'COMPLETE' | 'AWAITING' } = {},
   ) {
+    const candidatos = votacao.candidatos
+      ? votacao.candidatos.map((candidato) =>
+          this.serializeCandidate(candidato),
+        )
+      : [];
+
     return {
       ...votacao,
+      candidatos,
       startDate: this.formatDateForApi(votacao.startDate),
       endDate: this.formatDateForApi(votacao.endDate),
       ...extra,
@@ -250,5 +258,14 @@ export class VotacaoService {
       throw new BadRequestException('startDate deve ser anterior a endDate');
     }
     return { startDate, endDate };
+  }
+
+  private serializeCandidate(candidato: Candidato) {
+    const { image, ...rest } = candidato;
+    return {
+      ...rest,
+      image: image ? Buffer.from(image).toString('base64') : null,
+      imageContentType: candidato.imageContentType ?? null,
+    };
   }
 }
