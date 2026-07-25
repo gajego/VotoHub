@@ -34,8 +34,11 @@ export class Voto {
   })
   user: User;
 
-  @Column()
-  fingerprint: string;
+  @Column({ unique: true, nullable: false })
+  identifier: string;
+
+  @Column({ nullable: true })
+  ipAddress?: string;
 
   @CreateDateColumn()
   createdAt: Date;

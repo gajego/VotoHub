@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.getHttpAdapter().getInstance().set('trust proxy', true);
   const allowedOrigins = (process.env.CORS_MODE ?? 'http://localhost:5173')
     .split(',')
     .map((origin) => origin.trim())

@@ -6,10 +6,11 @@ import { Votacao } from './entities/votacao.entity';
 import { Voto } from './entities/voto.entity';
 import { Candidato } from 'src/candidato/entities/candidato.entity';
 import { UserModule } from 'src/user/user.module';
+import { VoteIdentifierBootstrapService } from './services/vote-identifier-bootstrap.service';
 
 @Module({
   controllers: [VotacaoController],
-  providers: [VotacaoService],
+  providers: [VotacaoService, VoteIdentifierBootstrapService],
   imports: [TypeOrmModule.forFeature([Votacao, Voto, Candidato]), UserModule],
 })
 export class VotacaoModule {}

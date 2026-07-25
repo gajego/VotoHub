@@ -14,6 +14,7 @@ import { Votacao } from './entities/votacao.entity';
 import { Voto } from './entities/voto.entity';
 import { Candidato } from 'src/candidato/entities/candidato.entity';
 import { User } from 'src/user/entities/user.entity';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class VotacaoService {
@@ -102,7 +103,12 @@ export class VotacaoService {
     return { message: 'Votação removida com sucesso' };
   }
 
-  async votar(votacaoId: number, userId: number, createVotoDto: CreateVotoDto) {
+  async votar(
+    votacaoId: number,
+    userId: number,
+    createVotoDto: CreateVotoDto,
+    ipAddress: string,
+  ) {
     const votacao = await this.votacaoRepository.findOne({
       where: { id: votacaoId },
       relations: { candidatos: true },
@@ -141,11 +147,13 @@ export class VotacaoService {
     }
 
     try {
+      const normalizedIpAddress = this.normalizeIpAddress(ipAddress);
       const voto = await this.votoRepository.save({
         votacao,
         candidato,
         user,
-        fingerprint: createVotoDto.fingerprint,
+        identifier: randomUUID(),
+        ipAddress: normalizedIpAddress,
       });
       return { id: voto.id, message: 'Voto registrado com sucesso' };
     } catch (error: any) {
@@ -215,6 +223,22 @@ export class VotacaoService {
       endDate: this.formatDateForApi(votacao.endDate),
       ...extra,
     };
+  }
+
+  private normalizeIpAddress(ipAddress: string) {
+    if (!ipAddress) {
+      return ipAddress;
+    }
+
+    if (ipAddress === '::1' || ipAddress === '127.0.0.1') {
+      return '127.0.0.1';
+    }
+
+    if (ipAddress.startsWith('::ffff:')) {
+      return ipAddress.slice('::ffff:'.length);
+    }
+
+    return ipAddress;
   }
 
   private formatDateForApi(value: Date) {

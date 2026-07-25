@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  Ip,
 } from '@nestjs/common';
 import { VotacaoService } from './votacao.service';
 import { CreateVotacaoDto } from './dto/create-votacao.dto';
@@ -43,8 +44,9 @@ export class VotacaoController {
     @Param('id') id: number,
     @Body() createVotoDto: CreateVotoDto,
     @GetUser() user: { id: number },
+    @Ip() ip: string,
   ) {
-    return this.votacaoService.votar(id, user.id, createVotoDto);
+    return this.votacaoService.votar(id, user.id, createVotoDto, ip);
   }
 
   @Get(':id')
