@@ -168,6 +168,51 @@ export class VotacaoService {
     return this.findVotes({ votacao: { id } });
   }
 
+  async findCountersById(id: string) {
+    const electionId = Number(id);
+    const votacao = await this.findElectionEntity(electionId);
+    const votos = await this.votoRepository.find({
+      where: { votacao: { id: electionId } },
+      relations: { candidato: true },
+    });
+
+    const votesByCandidate = new Map<number, number>();
+    let blankVotes = 0;
+
+    for (const voto of votos) {
+      if (!voto.candidato) {
+        blankVotes += 1;
+        continue;
+      }
+
+      votesByCandidate.set(
+        voto.candidato.id,
+        (votesByCandidate.get(voto.candidato.id) ?? 0) + 1,
+      );
+    }
+
+    const totalVotes = votos.length;
+    const validVotes = totalVotes - blankVotes;
+    const candidateStats = votacao.candidatos
+      .map((candidate) => {
+        const votes = votesByCandidate.get(candidate.id) ?? 0;
+        return {
+          candidate: this.serializeCandidate(candidate),
+          votes,
+          percentage: totalVotes ? (votes / totalVotes) * 100 : 0,
+        };
+      })
+      .sort((left, right) => right.votes - left.votes);
+
+    return {
+      totalVotes,
+      validVotes,
+      blankVotes,
+      candidateStats,
+      leader: candidateStats[0] ?? null,
+    };
+  }
+
   findVotesByDate(date: string) {
     const parsedDate = new Date(date);
     if (Number.isNaN(parsedDate.getTime())) {

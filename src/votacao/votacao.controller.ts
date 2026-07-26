@@ -39,6 +39,11 @@ export class VotacaoController {
     return this.votacaoService.findVotesById(id);
   }
 
+  @Get(':id/contadores')
+  findCountersById(@Param('id') id: string) {
+    return this.votacaoService.findCountersById(id);
+  }
+
   @Post(':id/votar')
   votar(
     @Param('id') id: number,
