@@ -241,6 +241,13 @@ export class UserService {
       );
     }
 
+    if (targetUserId === requesterUserId) {
+      throw new HttpException(
+        'Você não pode excluir a si mesmo',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     const userToDelete = await this.usersRepository.findOneBy({
       id: targetUserId,
     });
@@ -249,8 +256,7 @@ export class UserService {
       throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
     }
 
-    userToDelete.isActive = false;
-    await this.usersRepository.save(userToDelete);
+    await this.usersRepository.delete(targetUserId);
 
     return { message: 'Usuário deletado com sucesso' };
   }

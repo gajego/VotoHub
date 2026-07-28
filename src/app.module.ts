@@ -69,6 +69,59 @@ async function prepareVoteIdentifierColumn() {
   }
 }
 
+async function ensureVoteUserCascadeConstraint() {
+  if (process.env.DB_TYPE !== 'postgres') {
+    return;
+  }
+
+  const client = new Client({
+    host: process.env.DB_HOST,
+    port: +process.env.DB_PORT,
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+  });
+
+  await client.connect();
+
+  try {
+    const constraints = await client.query<{
+      constraint_name: string;
+      delete_rule: string;
+    }>(
+      `
+        SELECT tc.constraint_name, rc.delete_rule
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.referential_constraints rc
+          ON tc.constraint_name = rc.constraint_name
+         AND tc.constraint_schema = rc.constraint_schema
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+         AND tc.constraint_schema = kcu.constraint_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_schema = 'public'
+          AND tc.table_name = 'voto'
+          AND kcu.column_name = 'userId'
+      `,
+    );
+
+    const voteUserForeignKey = constraints.rows[0];
+
+    if (!voteUserForeignKey || voteUserForeignKey.delete_rule === 'CASCADE') {
+      return;
+    }
+
+    await client.query(
+      `ALTER TABLE "voto" DROP CONSTRAINT "${voteUserForeignKey.constraint_name}"`,
+    );
+    await client.query(
+      `ALTER TABLE "voto" ADD CONSTRAINT "${voteUserForeignKey.constraint_name}" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE`,
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -79,6 +132,7 @@ async function prepareVoteIdentifierColumn() {
     TypeOrmModule.forRootAsync({
       useFactory: async () => {
         await prepareVoteIdentifierColumn();
+        await ensureVoteUserCascadeConstraint();
 
         return {
           type: process.env.DB_TYPE as any,
