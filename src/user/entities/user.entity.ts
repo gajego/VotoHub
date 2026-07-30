@@ -20,11 +20,18 @@ export class User {
   })
   fullName: string;
 
-  @Index()
+  @Index({ unique: true })
   @Column({
     unique: true,
   })
-  email: string;
+  username: string;
+
+  @Index()
+  @Column({
+    unique: true,
+    nullable: true,
+  })
+  email: string | null;
 
   @Column()
   password: string;

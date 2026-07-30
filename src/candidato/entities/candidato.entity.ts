@@ -16,11 +16,11 @@ export class Candidato {
   @Column()
   nome: string;
 
-  @Column({ type: 'varchar', length: 14 })
-  cpf: string;
+  @Column({ type: 'varchar', length: 14, nullable: true })
+  cpf: string | null;
 
-  @Column({ unique: true })
-  email: string;
+  @Column({ unique: true, nullable: true })
+  email: string | null;
 
   @Column({ type: 'bytea', nullable: true })
   image: Buffer | null;

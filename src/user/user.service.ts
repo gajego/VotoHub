@@ -29,16 +29,31 @@ export class UserService {
 
     const defaultAdmin = {
       fullName: process.env.DEFAULT_ADMIN_FULL_NAME,
+      username: process.env.DEFAULT_ADMIN_USERNAME,
       email: process.env.DEFAULT_ADMIN_EMAIL,
       password: process.env.DEFAULT_ADMIN_PASSWORD,
       role: (process.env.DEFAULT_ADMIN_ROLE as ROLE) ?? ROLE.ADMIN,
     };
 
+    if (
+      !defaultAdmin.fullName ||
+      !defaultAdmin.username ||
+      !defaultAdmin.password
+    ) {
+      throw new Error('Configuração do administrador inicial incompleta.');
+    }
+
     try {
-      await this.ensureEmailAvailable(defaultAdmin.email);
+      await this.ensureUsernameAvailable(defaultAdmin.username);
+      if (defaultAdmin.email) {
+        if (defaultAdmin.email) {
+          await this.ensureEmailAvailable(defaultAdmin.email);
+        }
+      }
 
       const adminCreated = await this.usersRepository.save({
         ...defaultAdmin,
+        email: defaultAdmin.email ?? null,
         password: await encript(defaultAdmin.password),
       });
 
@@ -54,10 +69,14 @@ export class UserService {
   }
 
   async create(createUserDto: CreateUserDto) {
-    await this.ensureEmailAvailable(createUserDto.email);
+    await this.ensureUsernameAvailable(createUserDto.username);
+    if (createUserDto.email) {
+      await this.ensureEmailAvailable(createUserDto.email);
+    }
 
     const userCreated = await this.usersRepository.save({
       ...createUserDto,
+      email: createUserDto.email ?? null,
       password: await encript(createUserDto.password),
     });
 
@@ -70,7 +89,11 @@ export class UserService {
     const token = await this.jwtService.signAsync(
       {
         id: userCreated.id,
+        username: userCreated.username,
         email: userCreated.email,
+        fullName: userCreated.fullName,
+        role: userCreated.role,
+        isActive: userCreated.isActive,
       },
       {
         secret: process.env.JWT_SECRET,
@@ -94,10 +117,14 @@ export class UserService {
       );
     }
 
-    await this.ensureEmailAvailable(createUserDto.email);
+    await this.ensureUsernameAvailable(createUserDto.username);
+    if (createUserDto.email) {
+      await this.ensureEmailAvailable(createUserDto.email);
+    }
 
     const userCreated = await this.usersRepository.save({
       ...createUserDto,
+      email: createUserDto.email ?? null,
       password: await encript(createUserDto.password),
     });
 
@@ -110,8 +137,8 @@ export class UserService {
     return userCreated;
   }
 
-  async findOneByUsername(email: string) {
-    const user = await this.usersRepository.findOneBy({ email });
+  async findOneByUsername(username: string) {
+    const user = await this.usersRepository.findOneBy({ username });
     if (user) return user;
     throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
   }
@@ -132,6 +159,7 @@ export class UserService {
       select: {
         id: true,
         fullName: true,
+        username: true,
         email: true,
         role: true,
         isActive: true,
@@ -148,18 +176,26 @@ export class UserService {
   }
 
   async createDefault(createUserDto: CreateUserDto) {
-    const emailAvailable = await this.isEmailAvailable(createUserDto.email);
-    if (!emailAvailable) return false;
+    await this.ensureUsernameAvailable(createUserDto.username);
+    if (createUserDto.email) {
+      const emailAvailable = await this.isEmailAvailable(createUserDto.email);
+      if (!emailAvailable) return false;
+    }
 
     const userCreated = await this.usersRepository.save({
       ...createUserDto,
+      email: createUserDto.email ?? null,
       password: await encript(createUserDto.password),
     });
 
     const token = await this.jwtService.signAsync(
       {
         id: userCreated.id,
+        username: userCreated.username,
         email: userCreated.email,
+        fullName: userCreated.fullName,
+        role: userCreated.role,
+        isActive: userCreated.isActive,
       },
       {
         secret: process.env.JWT_SECRET,
@@ -196,6 +232,7 @@ export class UserService {
       .select([
         'user.id',
         'user.fullName',
+        'user.username',
         'user.email',
         'user.role',
         'user.isActive',
@@ -206,7 +243,7 @@ export class UserService {
 
     if (search) {
       queryBuilder.where(
-        '(LOWER(user.fullName) LIKE :search OR LOWER(user.email) LIKE :search)',
+        '(LOWER(user.fullName) LIKE :search OR LOWER(user.username) LIKE :search OR LOWER(user.email) LIKE :search)',
         { search: `%${search.toLowerCase()}%` },
       );
     }
@@ -282,8 +319,18 @@ export class UserService {
       throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
     }
 
-    if (updateUserDto.email && userToUpdate.email !== updateUserDto.email) {
+    if (
+      updateUserDto.email !== undefined &&
+      userToUpdate.email !== updateUserDto.email
+    ) {
       await this.ensureEmailAvailable(updateUserDto.email, targetUserId);
+    }
+
+    if (
+      updateUserDto.username &&
+      userToUpdate.username !== updateUserDto.username
+    ) {
+      await this.ensureUsernameAvailable(updateUserDto.username, targetUserId);
     }
 
     const isOwner = targetUserId === requesterUserId;
@@ -313,6 +360,17 @@ export class UserService {
 
     if (!isAvailable) {
       throw new HttpException(
+        'E-mail já está em uso',
+        HttpStatus.NOT_ACCEPTABLE,
+      );
+    }
+  }
+
+  private async ensureUsernameAvailable(username: string, userId?: number) {
+    const isAvailable = await this.isUsernameAvailable(username, userId);
+
+    if (!isAvailable) {
+      throw new HttpException(
         'Nome de usuário já está em uso',
         HttpStatus.NOT_ACCEPTABLE,
       );
@@ -329,6 +387,15 @@ export class UserService {
       email,
     });
     if (candidatoConflict) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private async isUsernameAvailable(username: string, userId?: number) {
+    const userConflict = await this.usersRepository.findOneBy({ username });
+    if (userConflict && userConflict.id !== userId) {
       return false;
     }
 

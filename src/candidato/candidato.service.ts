@@ -51,7 +51,7 @@ export class CandidatoService {
     const candidato = await this.findCandidateEntity(id);
 
     if (
-      updateCandidatoDto.email &&
+      updateCandidatoDto.email !== undefined &&
       updateCandidatoDto.email !== candidato.email
     ) {
       await this.ensureEmailAvailable(updateCandidatoDto.email, id);
@@ -82,7 +82,14 @@ export class CandidatoService {
     return candidato;
   }
 
-  private async ensureEmailAvailable(email: string, candidatoId?: number) {
+  private async ensureEmailAvailable(
+    email?: string | null,
+    candidatoId?: number,
+  ) {
+    if (!email) {
+      return;
+    }
+
     const existingCandidate = await this.candidatoRepository.findOneBy({
       email,
     });
