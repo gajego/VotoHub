@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, Length } from 'class-validator';
+import { IsNotEmpty, IsOptional, Length, MinLength } from 'class-validator';
 
 export class CreateUserDto {
   @IsNotEmpty({
@@ -9,8 +9,8 @@ export class CreateUserDto {
   @IsNotEmpty({
     message: 'Por favor, forneça um nome de usuário',
   })
-  @Length(3, 50, {
-    message: 'Nome de usuário deve ter entre 3 e 50 caracteres',
+  @MinLength(2, {
+    message: 'Nome de usuário deve ter no mínimo 2 caracteres',
   })
   username: string;
 

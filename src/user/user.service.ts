@@ -8,6 +8,32 @@ import { encript } from 'src/shared/crypt';
 import { ROLE } from 'src/shared/enum/user';
 import { Candidato } from 'src/candidato/entities/candidato.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Brackets } from 'typeorm';
+
+type UserListSortField =
+  | 'createdAt'
+  | 'updatedAt'
+  | 'fullName'
+  | 'username'
+  | 'email'
+  | 'role'
+  | 'isActive';
+
+type UserListSortOrder = 'ASC' | 'DESC';
+
+interface FindAllUsersParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  fullName?: string;
+  username?: string;
+  email?: string;
+  role?: string;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: string;
+  requesterId?: number;
+}
 
 @Injectable()
 export class UserService {
@@ -205,12 +231,19 @@ export class UserService {
     return { access_token: token };
   }
 
-  async findAll(
-    page: number = 1,
-    limit: number = 10,
-    search?: string,
-    requesterId?: number,
-  ) {
+  async findAll({
+    page = 1,
+    limit = 10,
+    search,
+    fullName,
+    username,
+    email,
+    role,
+    status,
+    sortBy,
+    sortOrder,
+    requesterId,
+  }: FindAllUsersParams = {}) {
     if (requesterId) {
       const requester = await this.usersRepository.findOneBy({
         id: requesterId,
@@ -227,6 +260,41 @@ export class UserService {
     const safePage = Math.max(page, 1);
     const skip = (safePage - 1) * safeLimit;
 
+    const sortFieldMap: Record<UserListSortField, string> = {
+      createdAt: 'user.createdAt',
+      updatedAt: 'user.updatedAt',
+      fullName: 'user.fullName',
+      username: 'user.username',
+      email: 'user.email',
+      role: 'user.role',
+      isActive: 'user.isActive',
+    };
+
+    const allowedSortFields: UserListSortField[] = [
+      'createdAt',
+      'updatedAt',
+      'fullName',
+      'username',
+      'email',
+      'role',
+      'isActive',
+    ];
+
+    const normalizedSortBy = allowedSortFields.includes(
+      sortBy as UserListSortField,
+    )
+      ? (sortBy as UserListSortField)
+      : 'createdAt';
+    const normalizedSortOrder: UserListSortOrder =
+      sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    const normalizedSearch = search?.trim().toLowerCase();
+    const normalizedFullName = fullName?.trim().toLowerCase();
+    const normalizedUsername = username?.trim().toLowerCase();
+    const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedRole = role?.trim().toUpperCase();
+    const normalizedStatus = status?.trim().toLowerCase();
+
     const queryBuilder = this.usersRepository
       .createQueryBuilder('user')
       .select([
@@ -239,13 +307,54 @@ export class UserService {
         'user.createdAt',
         'user.updatedAt',
       ])
-      .orderBy('user.createdAt', 'DESC');
+      .where('1 = 1')
+      .orderBy(sortFieldMap[normalizedSortBy], normalizedSortOrder)
+      .addOrderBy('user.id', 'DESC');
 
-    if (search) {
-      queryBuilder.where(
-        '(LOWER(user.fullName) LIKE :search OR LOWER(user.username) LIKE :search OR LOWER(user.email) LIKE :search)',
-        { search: `%${search.toLowerCase()}%` },
+    if (normalizedSearch) {
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where('LOWER(user.fullName) LIKE :search', {
+            search: `%${normalizedSearch}%`,
+          })
+            .orWhere('LOWER(user.username) LIKE :search', {
+              search: `%${normalizedSearch}%`,
+            })
+            .orWhere("COALESCE(LOWER(user.email), '') LIKE :search", {
+              search: `%${normalizedSearch}%`,
+            });
+        }),
       );
+    }
+
+    if (normalizedFullName) {
+      queryBuilder.andWhere('LOWER(user.fullName) LIKE :fullName', {
+        fullName: `%${normalizedFullName}%`,
+      });
+    }
+
+    if (normalizedUsername) {
+      queryBuilder.andWhere('LOWER(user.username) LIKE :username', {
+        username: `%${normalizedUsername}%`,
+      });
+    }
+
+    if (normalizedEmail) {
+      queryBuilder.andWhere("COALESCE(LOWER(user.email), '') LIKE :email", {
+        email: `%${normalizedEmail}%`,
+      });
+    }
+
+    if (normalizedRole && normalizedRole !== 'ALL') {
+      queryBuilder.andWhere('user.role = :role', {
+        role: normalizedRole,
+      });
+    }
+
+    if (normalizedStatus && normalizedStatus !== 'ALL') {
+      queryBuilder.andWhere('user.isActive = :isActive', {
+        isActive: normalizedStatus === 'active',
+      });
     }
 
     const [data, total] = await queryBuilder

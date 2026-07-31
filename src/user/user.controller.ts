@@ -39,14 +39,28 @@ export class UserController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('fullName') fullName?: string,
+    @Query('username') username?: string,
+    @Query('email') email?: string,
+    @Query('role') role?: string,
+    @Query('status') status?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: string,
     @GetUser() user?: any,
   ) {
-    return this.userService.findAll(
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 10,
+    return this.userService.findAll({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 10,
       search,
-      user?.id,
-    );
+      fullName,
+      username,
+      email,
+      role,
+      status,
+      sortBy,
+      sortOrder,
+      requesterId: user?.id,
+    });
   }
 
   @Get(':id')
