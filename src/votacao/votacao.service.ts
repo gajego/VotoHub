@@ -228,6 +228,7 @@ export class VotacaoService {
       (entry) => entry.votes === topVotes,
     );
     const isTie = topVotes > 0 && tiedLeaders.length > 1;
+    const leader = topVotes > 0 && !isTie ? (candidateStats[0] ?? null) : null;
 
     return {
       totalVotes,
@@ -235,7 +236,7 @@ export class VotacaoService {
       blankVotes,
       nullVotes,
       candidateStats,
-      leader: isTie ? null : (candidateStats[0] ?? null),
+      leader,
       isTie,
     };
   }
