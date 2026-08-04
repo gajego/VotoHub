@@ -15,6 +15,7 @@ import { Voto } from './entities/voto.entity';
 import { Candidato } from 'src/candidato/entities/candidato.entity';
 import { User } from 'src/user/entities/user.entity';
 import { randomUUID } from 'crypto';
+import { VoteType } from './types/vote-type';
 
 @Injectable()
 export class VotacaoService {
@@ -122,15 +123,26 @@ export class VotacaoService {
       throw new BadRequestException('Votação fora do período permitido');
     }
 
-    const isBlankVote =
-      createVotoDto.candidatoId === undefined ||
-      createVotoDto.candidatoId === null;
-    const candidato = isBlankVote
-      ? null
-      : votacao.candidatos.find(
-          (item) => item.id === createVotoDto.candidatoId,
-        );
-    if (!isBlankVote && !candidato) {
+    const voteType: VoteType =
+      createVotoDto.voteType ??
+      (createVotoDto.candidatoId === undefined ||
+      createVotoDto.candidatoId === null
+        ? 'BLANK'
+        : 'VALID');
+
+    if (voteType !== 'VALID' && createVotoDto.candidatoId != null) {
+      throw new BadRequestException(
+        'Votos em branco ou nulos não podem informar candidato',
+      );
+    }
+
+    const candidato =
+      voteType === 'VALID'
+        ? votacao.candidatos.find(
+            (item) => item.id === createVotoDto.candidatoId,
+          )
+        : null;
+    if (voteType === 'VALID' && !candidato) {
       throw new BadRequestException('Candidato não participa desta votação');
     }
 
@@ -152,6 +164,7 @@ export class VotacaoService {
         votacao,
         candidato,
         user,
+        voteType,
         identifier: randomUUID(),
         ipAddress: normalizedIpAddress,
       });
@@ -178,9 +191,15 @@ export class VotacaoService {
 
     const votesByCandidate = new Map<number, number>();
     let blankVotes = 0;
+    let nullVotes = 0;
 
     for (const voto of votos) {
-      if (!voto.candidato) {
+      if (voto.voteType === 'NULL') {
+        nullVotes += 1;
+        continue;
+      }
+
+      if (voto.voteType === 'BLANK' || !voto.candidato) {
         blankVotes += 1;
         continue;
       }
@@ -192,7 +211,7 @@ export class VotacaoService {
     }
 
     const totalVotes = votos.length;
-    const validVotes = totalVotes - blankVotes;
+    const validVotes = totalVotes - blankVotes - nullVotes;
     const candidateStats = votacao.candidatos
       .map((candidate) => {
         const votes = votesByCandidate.get(candidate.id) ?? 0;
@@ -204,12 +223,20 @@ export class VotacaoService {
       })
       .sort((left, right) => right.votes - left.votes);
 
+    const topVotes = candidateStats[0]?.votes ?? 0;
+    const tiedLeaders = candidateStats.filter(
+      (entry) => entry.votes === topVotes,
+    );
+    const isTie = topVotes > 0 && tiedLeaders.length > 1;
+
     return {
       totalVotes,
       validVotes,
       blankVotes,
+      nullVotes,
       candidateStats,
-      leader: candidateStats[0] ?? null,
+      leader: isTie ? null : (candidateStats[0] ?? null),
+      isTie,
     };
   }
 

@@ -9,6 +9,7 @@ import {
 import { User } from 'src/user/entities/user.entity';
 import { Candidato } from 'src/candidato/entities/candidato.entity';
 import { Votacao } from './votacao.entity';
+import { VoteType } from '../types/vote-type';
 
 @Entity()
 @Index(['votacao', 'user'], { unique: true })
@@ -33,6 +34,9 @@ export class Voto {
     onDelete: 'CASCADE',
   })
   user: User;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  voteType?: VoteType | null;
 
   @Column({ unique: true, nullable: false })
   identifier: string;
