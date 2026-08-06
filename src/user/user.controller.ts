@@ -13,6 +13,7 @@ import {
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 
 @Controller('user')
@@ -75,6 +76,19 @@ export class UserController {
     @GetUser() user: any,
   ) {
     return this.userService.update(id, updateUserDto, user.id);
+  }
+
+  @Patch(':id/active')
+  async updateStatus(
+    @Param('id') id: number,
+    @Body() updateUserStatusDto: UpdateUserStatusDto,
+    @GetUser() user: any,
+  ) {
+    return this.userService.updateStatus(
+      id,
+      updateUserStatusDto.isActive,
+      user.id,
+    );
   }
 
   @Delete(':id')

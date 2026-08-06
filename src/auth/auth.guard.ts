@@ -8,10 +8,14 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { ROLE } from 'src/shared/enum/user';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private userService: UserService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -34,10 +38,38 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: process.env.JWT_SECRET,
       });
-      request['user'] = payload;
+      const requesterId = Number(payload?.id);
+      if (!Number.isInteger(requesterId)) {
+        throw new UnauthorizedException('Acesso não autorizado');
+      }
+
+      const requester = await this.userService.findOneForAuth(requesterId);
+      if (!requester) {
+        throw new UnauthorizedException('Acesso não autorizado');
+      }
+
+      if (!requester.isActive) {
+        throw new ForbiddenException('Usuário inativo');
+      }
+
+      request['user'] = {
+        ...payload,
+        id: requester.id,
+        username: requester.username,
+        fullName: requester.fullName,
+        email: requester.email,
+        role: requester.role,
+        isActive: requester.isActive,
+      };
     } catch (error: any) {
       if (error?.name === 'TokenExpiredError') {
         throw new UnauthorizedException('Sessão expirada');
+      }
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      if (error instanceof UnauthorizedException) {
+        throw error;
       }
       throw new UnauthorizedException();
     }

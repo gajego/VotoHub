@@ -169,6 +169,22 @@ export class UserService {
     throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
   }
 
+  async findOneForAuth(userId: number) {
+    return this.usersRepository.findOne({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   async findOneById(targetId: number, requesterId: number) {
     const requester = await this.usersRepository.findOneBy({
       id: requesterId,
@@ -405,6 +421,60 @@ export class UserService {
     await this.usersRepository.delete(targetUserId);
 
     return { message: 'Usuário deletado com sucesso' };
+  }
+
+  async updateStatus(
+    targetUserId: number,
+    isActive: boolean,
+    requesterUserId: number,
+  ) {
+    const safeTargetUserId = Number(targetUserId);
+    const safeRequesterUserId = Number(requesterUserId);
+
+    if (!Number.isInteger(safeTargetUserId)) {
+      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    const requestor = await this.usersRepository.findOneBy({
+      id: safeRequesterUserId,
+    });
+
+    if (!requestor) {
+      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    if (requestor.role !== ROLE.ADMIN) {
+      throw new HttpException(
+        'Apenas admin pode alterar status de usuários',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (!isActive && safeTargetUserId === safeRequesterUserId) {
+      throw new HttpException(
+        'Você não pode inativar a si mesmo',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const userToUpdate = await this.usersRepository.findOneBy({
+      id: safeTargetUserId,
+    });
+
+    if (!userToUpdate) {
+      throw new HttpException('Usuário não encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    userToUpdate.isActive = isActive;
+    const updatedUser = await this.usersRepository.save(userToUpdate);
+
+    return {
+      id: updatedUser.id,
+      isActive: updatedUser.isActive,
+      message: updatedUser.isActive
+        ? 'Usuário reativado com sucesso'
+        : 'Usuário inativado com sucesso',
+    };
   }
 
   async update(
