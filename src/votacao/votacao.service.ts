@@ -186,14 +186,32 @@ export class VotacaoService {
     const votacao = await this.findElectionEntity(electionId);
     const votos = await this.votoRepository.find({
       where: { votacao: { id: electionId } },
-      relations: { candidato: true },
+      relations: { candidato: true, user: true },
+      order: { createdAt: 'ASC' },
     });
 
     const votesByCandidate = new Map<number, number>();
+    const voters = new Map<
+      number,
+      {
+        id: number;
+        fullName: string;
+        username: string;
+        email: string | null;
+        createdAt: string;
+      }
+    >();
     let blankVotes = 0;
     let nullVotes = 0;
 
     for (const voto of votos) {
+      if (!voters.has(voto.user.id)) {
+        voters.set(
+          voto.user.id,
+          this.serializeVoter(voto.user, voto.createdAt),
+        );
+      }
+
       if (voto.voteType === 'NULL') {
         nullVotes += 1;
         continue;
@@ -235,6 +253,7 @@ export class VotacaoService {
       validVotes,
       blankVotes,
       nullVotes,
+      voters: Array.from(voters.values()),
       candidateStats,
       leader,
       isTie,
@@ -371,6 +390,16 @@ export class VotacaoService {
       ...rest,
       image: image ? Buffer.from(image).toString('base64') : null,
       imageContentType: candidato.imageContentType ?? null,
+    };
+  }
+
+  private serializeVoter(user: User, createdAt: Date) {
+    return {
+      id: user.id,
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+      createdAt: this.formatDateForApi(createdAt),
     };
   }
 }
